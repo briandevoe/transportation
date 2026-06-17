@@ -47,3 +47,12 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# .claude history
+/.claude
+
+# papers/articles/literature
+/papers
+
+# data
+/data
