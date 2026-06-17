@@ -11,7 +11,8 @@
 # First run: 45-90 min (TIGER road download + spatial compute, then cached).
 # Subsequent runs: ~5 min (cache loads instantly; ACS + noise are fast).
 
-CODE_DIR <- r"(C:\Users\bdevoe\Desktop\git\transportation\code)"
+library(here)
+CODE_DIR <- here("code")
 
 run_script <- function(name) {
   path <- file.path(CODE_DIR, name)

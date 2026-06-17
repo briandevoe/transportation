@@ -8,8 +8,9 @@
 #          transport_fig5_coi_hwy_all.png  transport_fig6_noise.png
 
 library(tidyverse)
+library(here)
 
-OUTPUT_DIR       <- r"(C:\Users\bdevoe\Desktop\git\transportation\output)"
+OUTPUT_DIR       <- here("output")
 COI_LEVEL_ORDER  <- c("Very Low", "Low", "Moderate", "High", "Very High")
 COI_LEVEL_COLORS <- c("Very Low"="#d73027","Low"="#fc8d59","Moderate"="#ffffbf",
                        "High"="#91cf60","Very High"="#1a9850")

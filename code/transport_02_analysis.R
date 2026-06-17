@@ -6,8 +6,9 @@
 
 library(tidyverse)
 library(broom)
+library(here)
 
-OUTPUT_DIR <- r"(C:\Users\bdevoe\Desktop\git\transportation\output)"
+OUTPUT_DIR <- here("output")
 
 df <- readRDS(file.path(OUTPUT_DIR, "transport_df.rds"))
 

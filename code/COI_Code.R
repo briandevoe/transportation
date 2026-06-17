@@ -6,7 +6,8 @@ packages <- c(
   "sf",
   "data.table",
   "tigris",
-  "tmap"
+  "tmap",
+  "here"
 )
 installed <- rownames(installed.packages())
 to_install <- packages[!packages %in% installed]
@@ -21,13 +22,12 @@ sf_use_s2(TRUE)
 tmap_mode("plot")
 
 ## Load Data 
-DATA_DIR    <- r"(C:\Users\bdevoe\Desktop\git\transportation\data)"
-OUTPUT_DIR  <- r"(C:\Users\bdevoe\Desktop\git\transportation\output)"
-COI_CSV     <- file.path(DATA_DIR, "2010 census tracts, overall index and domains (COI 3.0-2023)", "data.csv")
-NOISE_DIR   <- file.path(DATA_DIR, "conus_shp")
-HIGHWAY_SHP <- file.path(DATA_DIR, "NTAD_National_Highway_System", "National_Highway_System_(NHS).shp")
-BUS_SHP     <- file.path(DATA_DIR, "NTAD_National_Transit_Map_Routes", "National_Transit_Map_Routes.shp")
-RAIL_SHP    <- file.path(DATA_DIR, "NTAD_North_American_Rail_Network_Lines_6760165070091449209", "North_American_Rail_Network_Lines.shp")
+COI_CSV     <- here("data", "2010 census tracts, overall index and domains (COI 3.0-2023)", "data.csv")
+NOISE_DIR   <- here("data", "conus_shp")
+HIGHWAY_SHP <- here("data", "NTAD_National_Highway_System", "National_Highway_System_(NHS).shp")
+BUS_SHP     <- here("data", "NTAD_National_Transit_Map_Routes", "National_Transit_Map_Routes.shp")
+RAIL_SHP    <- here("data", "NTAD_North_American_Rail_Network_Lines_6760165070091449209", "North_American_Rail_Network_Lines.shp")
+OUTPUT_DIR  <- here("output")
 dir.create(OUTPUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
 ## Load COI Data

@@ -10,15 +10,15 @@ library(tidyverse)
 library(sf)
 library(tigris)
 library(tidycensus)
+library(here)
 
-REPO_ROOT     <- r"(C:\Users\bdevoe\Desktop\git\transportation)"
-DATA_DIR      <- file.path(REPO_ROOT, "data")
-OUTPUT_DIR    <- file.path(REPO_ROOT, "output")
-HIGHWAY_SHP   <- file.path(DATA_DIR, "NTAD_National_Highway_System", "National_Highway_System_(NHS).shp")
-BUS_STOPS_SHP <- file.path(DATA_DIR, "NTAD_National_Transit_Map_Stops_8953550677584268325",
-                            "National_Transit_Map_Stops.shp")
-NOISE_DIR     <- file.path(DATA_DIR, "conus_shp")
-INFRA_CACHE     <- file.path(OUTPUT_DIR, "infra_metrics.rds")
+DATA_DIR      <- here("data")
+OUTPUT_DIR    <- here("output")
+HIGHWAY_SHP   <- here("data", "NTAD_National_Highway_System", "National_Highway_System_(NHS).shp")
+BUS_STOPS_SHP <- here("data", "NTAD_National_Transit_Map_Stops_8953550677584268325",
+                       "National_Transit_Map_Stops.shp")
+NOISE_DIR     <- here("data", "conus_shp")
+INFRA_CACHE   <- here("output", "infra_metrics.rds")
 PROJ_CRS        <- 5070
 COI_LEVEL_ORDER <- c("Very Low", "Low", "Moderate", "High", "Very High")
 CONUS_STATES    <- c(state.abb[!state.abb %in% c("AK", "HI")], "DC")
@@ -28,7 +28,7 @@ dir.create(OUTPUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
 # ── 1. COI + RUCA ─────────────────────────────────────────────────────────────
 message("Loading COI data...")
-coi <- read_csv(file.path(DATA_DIR, "2010 census tracts, overall index and domains (COI 3.0-2023)", "data.csv"),
+coi <- read_csv(here("data", "2010 census tracts, overall index and domains (COI 3.0-2023)", "data.csv"),
                 col_types = cols(geoid10 = col_character(), state_usps = col_character(),
                                  .default = col_guess()), show_col_types = FALSE) |>
   rename(geoid20 = geoid10) |>
@@ -37,7 +37,7 @@ coi <- read_csv(file.path(DATA_DIR, "2010 census tracts, overall index and domai
          c5_COI_nat = as.character(c5_COI_nat),
          state_fips = substr(geoid20, 1, 2))
 
-ruca <- read_csv(file.path(DATA_DIR, "RUCA", "RUCA-codes-2020-tract.csv"),
+ruca <- read_csv(here("data", "RUCA", "RUCA-codes-2020-tract.csv"),
                  col_types = cols_only(TractFIPS20 = col_character(), PrimaryRUCA = col_double()),
                  show_col_types = FALSE) |>
   rename(geoid20 = TractFIPS20) |>
