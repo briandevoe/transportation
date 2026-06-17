@@ -1,0 +1,473 @@
+================================================================================
+TRANSPORTATION INFRASTRUCTURE AND CHILD OPPORTUNITY INDEX
+Full Methods, Results, and Figure Guide
+Data: COI 3.0 (2020), NHS NTAD shapefile, NTM bus stops, ACS 2020 5-year,
+      DOT tract-level noise model (conus_shp)
+N: 82,315 CONUS census tracts
+Prepared: June 2026
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 1: DATA SOURCES
+────────────────────────────────────────────────────────────────────────────────
+
+Child Opportunity Index 3.0 (COI)
+  The COI scores every census tract in the United States on a 0–100 national
+  percentile scale measuring the quality of neighborhood conditions for child
+  development. It combines 29 indicators across three domains: educational
+  opportunity, health/environmental opportunity, and socioeconomic opportunity.
+  Tracts are also assigned to one of five quintiles: Very Low, Low, Moderate,
+  High, and Very High opportunity. This analysis uses the 2020 vintage (2020
+  census tract boundaries). Source: diversitydatakids.org.
+
+National Highway System (NHS) Shapefile
+  The NHS is the federally designated network of strategically important
+  highways, including all interstates and major US routes selected for national
+  defense, commerce, and mobility. It covers approximately 160,000 centerline
+  miles. This is meaningfully different from all public roads: it captures the
+  large-scale highway infrastructure most likely to generate both access
+  benefits (regional connectivity, job access) and proximity burdens (noise,
+  air pollution, community division). Source: NTAD / FHWA via local shapefile.
+
+NTM Bus Stops
+  The National Transit Map stops layer filtered to bus stops only (stop_type=3).
+  This captures fixed-route bus service across all transit agencies that report
+  to the National Transit Database. Source: NTAD.
+
+American Community Survey (ACS) 2020 5-Year Estimates
+  Tract-level demographic and socioeconomic variables downloaded via the
+  tidycensus R package using the Census API. Variables include: median household
+  income, median age, race/ethnicity composition, vehicle availability,
+  renter share, poverty rate, share of children under 18, and transit commute
+  mode share.
+
+DOT Transportation Noise Model
+  Tract-level noise exposure data from the U.S. Department of Transportation,
+  distributed as state-level shapefiles (conus_shp/). Each tract has counts of
+  residents exposed to noise in six decibel bands (40–50, 50–60, 60–70, 70–80,
+  80–90, 90+ dB). Mean noise exposure is calculated as a population-weighted
+  average using band midpoints. Coverage: 100% match to 2020 COI tracts.
+
+RUCA Codes
+  Rural-Urban Commuting Area codes (2020 vintage) classify tracts into four
+  urbanicity categories used for stratified analysis:
+    Metropolitan  (RUCA 1–3): urban cores and commuting zones
+    Micropolitan  (RUCA 4–6): small cities and their commuting zones
+    Small Town    (RUCA 7–9): towns with limited commuting to urban areas
+    Rural         (RUCA 10+): isolated rural areas
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 2: SPATIAL METRICS COMPUTED
+────────────────────────────────────────────────────────────────────────────────
+
+All spatial computations use EPSG:5070 (NAD83 Conus Albers) as the projected
+coordinate reference system, which preserves distances and areas across the
+continental US. Tract centroids are used as the representative point for each
+tract.
+
+Distance to Nearest NHS Highway (dist_highway_km)
+  For each tract centroid, the straight-line distance to the nearest NHS
+  highway segment is computed. Reported in kilometers. This is a pure proximity
+  measure — it does not distinguish between a tract adjacent to an interstate
+  vs. one 10 km away.
+
+Bus Stops per Tract (n_bus_stops)
+  Count of NTM bus stops that fall within each tract polygon via spatial
+  intersection. A companion density measure (stops per sq km) is also computed
+  but not used in the primary regression.
+
+NHS Highway Miles Within Buffer (hwy_mi_half, hwy_mi_1mi, hwy_mi_2mi, hwy_mi_5mi)
+  For each buffer distance (0.5, 1, 2, and 5 miles from the tract centroid),
+  the total length of NHS highway segments falling within that circle is summed
+  and converted to miles. This measures the density of highway infrastructure
+  in the immediate and broader neighborhood of each tract. A tract with no
+  nearby highway has 0 miles at all buffers; a tract bisected by an interstate
+  may have 2–5 miles within 1 mile.
+
+Highway Distance-Decay Access Score (hwy_decay)
+  A continuous access score that weights nearby highway segments more heavily
+  than distant ones using an exponential decay function:
+    A_i = Σ_j [ length_j × exp(−d_ij / σ) ]
+  where length_j is the length (miles) of highway segment j, d_ij is the
+  distance from tract centroid i to segment j, and σ = 1 mile (1,609 m) is
+  the bandwidth controlling how quickly weight falls off with distance. Only
+  highway segments within 10 miles are included. Higher scores mean more
+  highway infrastructure nearby, with closer segments weighted more heavily.
+  This score captures the full spatial distribution of nearby highways, not
+  just the single nearest one.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 3: MODELS
+────────────────────────────────────────────────────────────────────────────────
+
+All models are estimated using ordinary least squares (OLS) linear regression
+with the COI national percentile score (0–100) as the outcome. Three
+progressively more controlled specifications are estimated:
+
+  M1 — No fixed effects (baseline)
+  M2 — RUCA urbanicity fixed effects (4 categories)
+  M3 — RUCA urbanicity + state fixed effects (48 states + DC)
+
+Adding fixed effects controls for unmeasured differences between urbanicity
+types and states, allowing coefficients on the infrastructure variables to
+reflect within-RUCA-category and within-state variation rather than
+confounding by geography.
+
+Predictors of primary interest (reported in results):
+  log1p(n_bus_stops)      — log-transformed bus stop count
+  log1p(dist_highway_km)  — log-transformed NHS distance
+  hwy_mi_1mi              — NHS miles within 1-mile buffer
+  hwy_mi_5mi              — NHS miles within 5-mile buffer
+  hwy_decay               — distance-decay access score
+  pct_no_vehicle          — % of households with no vehicle
+  mean_noise_db           — population-weighted mean noise (dB)
+  pct_exposed_60db        — % of residents exposed to ≥60 dB
+
+Control variables (included in all models, not reported):
+  log(median household income), % nonwhite, % renter, % under 18,
+  % below poverty line, % transit commuters, median age
+
+Why log-transform distance and bus stops?
+  Both variables are right-skewed: most tracts are moderately close to a
+  highway and have a handful of bus stops, but a few tracts are very far
+  or have very many stops. A log transformation compresses the long tail
+  and makes the relationship approximately linear. It also gives the
+  coefficient a proportional interpretation (see Section 4).
+
+A fourth model set runs M1 separately within each RUCA category
+("RUCA-stratified"). This allows the relationship between infrastructure
+and COI to differ by urbanicity — which it does substantially.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 4: HOW TO INTERPRET THE REGRESSION COEFFICIENTS
+────────────────────────────────────────────────────────────────────────────────
+
+The outcome is the COI national percentile (0–100). Coefficients represent the
+predicted change in COI percentile points associated with a one-unit increase
+in the predictor, holding all other variables constant.
+
+Log-transformed predictors (distance, bus stops):
+  A one-unit increase in log(x+1) corresponds to approximately a 2.7-fold
+  increase in x. More intuitively: the coefficient represents the predicted
+  change in COI for a ~170% increase in the predictor.
+
+  Example: log1p(dist_highway_km) coefficient = −4.79 (M1)
+  A tract 1 km from the nearest NHS highway vs. a tract 2.72 km away
+  (one log unit apart) is predicted to score 4.79 percentile points higher,
+  all else equal. Put differently, doubling distance from ~1 km to ~2 km
+  predicts about a 3.3-point drop in COI (log(2) × 4.79 ≈ 3.3).
+
+  Example: log1p(n_bus_stops) coefficient = +1.22 (M1)
+  A tract going from ~3 bus stops to ~8 bus stops (one log unit) is
+  predicted to score 1.22 percentile points higher. This is a secondary
+  effect — much smaller than highway distance.
+
+Buffer mile predictors (hwy_mi_1mi, hwy_mi_5mi):
+  Each additional mile of NHS highway within 1 mile of the centroid predicts
+  a change of [coefficient] percentile points. The sign reveals whether
+  immediate proximity is a burden or benefit.
+
+  hwy_mi_1mi = −0.31 (M1): each additional NHS mile within 1 mile predicts
+  a 0.31-point lower COI. A tract with 3 miles of interstate within 1 mile
+  is predicted to score ~1 point lower than a similar tract with none.
+
+  hwy_mi_5mi = +0.024 (M1): each additional NHS mile within 5 miles predicts
+  a 0.024-point higher COI. A tract with 50 more miles of highway within
+  5 miles (roughly the difference between rural and suburban) is predicted
+  to score ~1.2 points higher.
+
+  Together these capture the PROXIMITY PARADOX: being immediately adjacent
+  to a major highway is associated with lower opportunity (noise, pollution,
+  physical barriers), but having highway access within a reasonable commute
+  distance is associated with higher opportunity (job access, mobility).
+
+Noise predictor (mean_noise_db):
+  mean_noise_db = −0.022 (M1): each additional decibel of mean noise predicts
+  a 0.022-point lower COI percentile. The range across quintiles is ~7 dB
+  (Very Low = 20.4 dB, Moderate = 13.7 dB), implying roughly a 0.15-point
+  gap attributable to noise alone, net of highway distance. While the per-dB
+  coefficient is small, it is measured after controlling for highway proximity
+  — meaning noise captures a pathway independent of simply being near a highway.
+
+% No vehicle (pct_no_vehicle):
+  pct_no_vehicle = +0.087 (M1): nationally, each 1 percentage point increase
+  in the share of car-free households predicts a 0.087-point higher COI.
+  This seems counterintuitive until the RUCA stratification is examined
+  (Section 5): urban car-free households live in transit-rich areas (positive
+  association); rural car-free households face mobility hardship (negative).
+  The national average is positive because most tracts are metropolitan.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 5: RESULTS
+────────────────────────────────────────────────────────────────────────────────
+
+Summary Statistics by COI Quintile
+───────────────────────────────────
+                   Very Low    Low    Moderate    High   Very High
+Tracts               16,310  16,880    17,053   16,330     15,742
+Bus stops/tract        9.89    6.84      6.78     7.07       7.66
+NHS distance (km)      3.08    3.71      3.10     2.15       1.51
+Hwy miles @1mi         2.91    2.10      2.09     2.22       2.79
+Hwy miles @5mi        54.3    41.1      41.1     45.9       60.1
+Hwy decay score        6.47    4.90      4.87     5.26       6.60
+Mean noise (dB)       20.4    14.4      13.7     13.8       15.2
+% No vehicle          15.6%    8.9%      6.8%     5.8%       6.2%
+Median income ($k)    $37.8   $51.2     $62.4    $78.9     $113.0
+
+Notable patterns:
+  • Very High tracts are 2.5× closer to an NHS highway than Low tracts.
+  • The buffer mile pattern is U-shaped at 5 miles: both Very Low and Very
+    High tracts have more highway access than middle quintiles. Very Low tracts
+    are close to highways in urban corridors; Very High tracts are close to
+    highways in affluent suburbs with regional access.
+  • Very Low tracts have 6+ dB more noise than any other quintile — a large
+    difference on a logarithmic scale representing substantially more acoustic
+    energy and associated health burden.
+  • Very Low tracts have the most bus stops AND the highest car-free rate.
+    This reflects concentrated urban poverty: transit-dependent populations
+    in transit-rich but low-opportunity neighborhoods.
+
+Regression Results
+──────────────────
+                         M1 (no FE)   M2 (+RUCA)   M3 (+state)
+R-squared                  0.775        0.782         0.788
+
+log(NHS distance, km)     −4.79***    −3.69***      −3.50***
+log(bus stops + 1)        +1.22***    +0.87***      +0.52***
+Hwy miles @1mi            −0.31***    −0.22***      −0.12**
+Hwy miles @5mi            +0.024***   +0.010**      +0.017***
+Hwy decay score           −0.145**    −0.095**      −0.194***
+% No vehicle              +0.087***   +0.076***     +0.062***
+Mean noise (dB)           −0.022***   −0.030***     −0.034***
+% Exposed ≥60 dB          +0.036**    +0.040***     +0.064***
+
+*** p<0.001  ** p<0.01
+
+Key findings:
+  1. NHS distance is the dominant predictor, dwarfing all others in magnitude.
+     Even after adding state fixed effects, the coefficient remains −3.5.
+
+  2. The proximity paradox holds across all three models: the 1-mile buffer
+     is consistently negative (burden) while the 5-mile buffer is consistently
+     positive (benefit). The scale at which you measure proximity determines
+     whether highways look like a hazard or an asset.
+
+  3. Noise adds predictive information beyond highway distance. The mean_noise_db
+     coefficient is negative and significant even in M3 with state fixed effects,
+     meaning noise is not simply a proxy for proximity — it captures an
+     independent dimension of the transportation burden.
+
+  4. The positive coefficient on pct_exposed_60db reflects urban density:
+     very dense urban areas have both high noise exposure and relatively high
+     COI due to job access, services, and amenities. This is a suppression
+     effect and should be interpreted alongside mean_noise_db.
+
+  5. R² increases modestly from M1 to M3 (0.775 → 0.788), suggesting that
+     the infrastructure variables themselves explain most of the variation
+     attributable to transportation — state and RUCA effects add little
+     explanatory power beyond what the variables already capture.
+
+RUCA-Stratified Regression (M1 within each urbanicity group)
+──────────────────────────────────────────────────────────────
+                      Metro      Microp.    Sm. Town    Rural
+R-squared             0.786       0.654       0.599      0.648
+
+NHS dist (log)       −4.98***    −1.67**      n.s.     +0.79*
+Hwy @1mi             −0.30***     n.s.       +1.19**   +0.72*
+Hwy @5mi             +0.010**    +0.157***   +0.206*** +0.278***
+% No vehicle         +0.099***    n.s.        n.s.     −0.123***
+Noise (dB)           −0.034***   −0.045*      n.s.      n.s.
+
+*** p<0.001  ** p<0.01  * p<0.05  n.s. = not significant
+
+Two fundamental sign reversals:
+
+1. NHS DISTANCE SIGN FLIP (metro: −4.98, rural: +0.79)
+   In metropolitan areas, being far from a major highway is associated with
+   lower COI — you are isolated from jobs, services, and regional mobility.
+   In rural areas, being far from an NHS corridor is associated with slightly
+   HIGHER COI. This reflects the nature of rural NHS highways: they tend to
+   run through economically distressed agricultural and industrial corridors,
+   not around them. Being off the highway in a rural area means being in
+   a quieter, less industrialized community.
+
+2. % NO VEHICLE SIGN FLIP (metro: +0.099, rural: −0.123)
+   Urban households without cars are concentrated in transit-rich inner cities
+   where walkability and transit access replace car dependence. Car-free is a
+   lifestyle choice enabled by dense infrastructure. In rural areas, car-free
+   households have no mobility alternatives — no bus, no train, no rideshare.
+   Car-free in rural America is an economic hardship indicator, not a transit
+   preference. The same variable measures opposite phenomena.
+
+   This has direct implications for any COI transportation component: a single
+   national % no-vehicle coefficient would misrepresent the rural experience.
+
+Additional stratified findings:
+  • The hwy_mi_1mi proximity burden (negative in metro) flips positive in
+    Small Town and Rural. In those areas, being near an NHS highway is
+    associated with higher COI — it likely represents a main street or
+    commerce corridor, not an urban freeway barrier.
+  • The 5-mile buffer coefficient is positive and significant across ALL
+    four RUCA categories, suggesting that broad regional highway access is
+    universally beneficial regardless of urbanicity.
+  • Noise is only significant in Metropolitan and Micropolitan areas.
+    In Small Town and Rural contexts, noise is not a meaningful predictor
+    of COI after controlling for other variables, consistent with noise
+    being a predominantly urban burden.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 6: FIGURE GUIDE
+────────────────────────────────────────────────────────────────────────────────
+
+Fig 1 — transport_fig1_profile.png
+  Title: "Transportation Access by Child Opportunity Index Quintile"
+  Type:  Bar chart, 6-panel facet (free y-axis scales)
+  What it shows: Mean value of each infrastructure indicator by COI quintile,
+  colored by quintile (red = Very Low, green = Very High). The six panels are:
+  bus stops per tract, highway distance (km), highway miles at 1-mile buffer,
+  highway miles at 5-mile buffer, % no-vehicle households, and mean noise (dB).
+  How to read it: Within each panel, compare bar heights across the five
+  quintiles. A downward-sloping pattern (Very Low tallest) means that variable
+  is associated with lower opportunity; upward means higher opportunity.
+  Key story: NHS distance decreases monotonically from Low to Very High (closer
+  = better COI). Noise is dramatically elevated for Very Low. Buffer miles at
+  5mi are U-shaped. % No vehicle is highest by far in Very Low, reflecting
+  concentrated transit-dependent urban poverty.
+
+Fig 2 — transport_fig2_buffer_curve.png
+  Title: "NHS Highway Miles Within Buffer by Opportunity Level"
+  Type:  Line chart with points, 5 lines (one per COI quintile)
+  What it shows: As buffer radius increases from 0.5 to 5 miles, how does
+  average NHS highway mileage accumulate, for each COI quintile?
+  How to read it: The x-axis is buffer radius; the y-axis is cumulative miles
+  of NHS highway within that radius. Lines that are higher have more highway
+  infrastructure nearby.
+  Key story: At small buffers (0.5–1 mi), differences are small. At 5 miles,
+  a U-shape emerges: Very Low and Very High tracts both have substantially more
+  highway miles than middle quintiles. This reflects two different mechanisms —
+  urban highway exposure for Very Low, suburban regional access for Very High.
+
+Fig 3 — transport_fig3_coi_hwy.png
+  Title: "COI National Percentile vs Distance to Nearest NHS Highway"
+  Type:  Scatter plot with LOESS smoother, faceted by RUCA category (4 panels)
+  What it shows: Each point is one census tract (20,000-tract sample).
+  X-axis: distance to nearest NHS highway (km, clipped at 99th percentile).
+  Y-axis: COI national percentile (0–100). The red curve is a LOESS smoother
+  showing the average trend; the shaded band is the 95% confidence interval.
+  The x-axis scale differs across RUCA panels (free_x) to show within-group
+  variation.
+  How to read it: A downward-sloping red curve means tracts farther from
+  highways tend to have lower COI. A flat or upward curve means distance
+  does not predict COI (or predicts it positively) in that context.
+  Key story: Metropolitan shows a strong downward curve — clear benefit of
+  proximity. Micropolitan shows a shallower decline. Small Town is mostly flat.
+  Rural shows a slight upward slope — the sign reversal. The non-linearity
+  within Metropolitan is notable: there is a flattening or slight upturn at
+  very short distances (<0.5 km), consistent with the most immediate proximity
+  being a burden even in metro areas.
+
+Fig 4 — transport_fig4_noveh_ruca.png
+  Title: "Effect of % No-Vehicle Households on COI Score by Urbanicity"
+  Type:  Bar chart with 95% confidence interval error bars, colored by
+  statistical significance (blue = p<0.05, grey = n.s.)
+  What it shows: The regression coefficient on % no-vehicle households from
+  the RUCA-stratified models. Each bar represents the predicted change in COI
+  percentile for a 1 percentage point increase in car-free households, within
+  that urbanicity type, controlling for income, race, poverty, etc.
+  How to read it: Bars above zero mean more car-free households = higher COI
+  (in that context). Bars below zero mean the opposite. The dashed line at
+  zero is the null effect.
+  Key story: The Metropolitan bar is positive and significant (+0.10): in
+  cities, car-free households signal transit-rich opportunity neighborhoods.
+  The Rural bar is negative and significant (−0.12): in rural areas, car-free
+  households face immobility. The sign flip is the main result.
+
+Fig 5 — transport_fig5_coi_hwy_all.png
+  Title: "COI National Percentile vs Distance to Nearest NHS Highway"
+  Type:  Scatter plot with LOESS smoother, single panel, points colored by
+  COI quintile
+  What it shows: Same relationship as Fig 3 but pooling all RUCA types into
+  one panel, with points colored by COI quintile (red = Very Low, green =
+  Very High). The black LOESS curve shows the overall average trend.
+  How to read it: The spatial sorting of colors reveals the distributional
+  story: are Very Low (red) tracts concentrated at short distances? Are
+  Very High (green) tracts concentrated at short or intermediate distances?
+  Key story: The black curve declines sharply from 0–5 km then flattens.
+  The color distribution shows that Very Low tracts span the full range of
+  distances but are densely concentrated at short distances — consistent with
+  urban highway corridors running through low-income neighborhoods. Very High
+  tracts are also concentrated at short-to-moderate distances (suburban
+  highway access) but at much higher COI scores for a given distance.
+
+Fig 6 — transport_fig6_noise.png
+  Title: "COI National Percentile vs Transportation Noise Exposure"
+  Type:  Scatter plot with LOESS smoother, single panel, points colored by
+  COI quintile
+  What it shows: Same layout as Fig 5 but with mean noise dB on the x-axis
+  instead of highway distance.
+  How to read it: The x-axis is population-weighted mean decibel exposure.
+  A downward-sloping curve means higher noise = lower COI on average.
+  Key story: The LOESS curve declines clearly from low noise to moderate noise
+  (~25 dB), then flattens or reverses slightly at very high dB. The reversal
+  at high end reflects very dense urban areas (>30 dB) where noise is high
+  but COI is sustained by urban amenities. The Very Low (red) points
+  dominate the high-noise end of the distribution, visually confirming the
+  summary table finding that Very Low tracts experience 6+ dB more noise than
+  all other quintiles.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 7: LIMITATIONS
+────────────────────────────────────────────────────────────────────────────────
+
+  1. Cross-sectional associations, not causal estimates. The regression
+     coefficients describe correlations between infrastructure and COI after
+     controlling for observed covariates. They do not establish that highway
+     proximity causes lower opportunity or that bus access causes higher
+     opportunity. Unmeasured neighborhood characteristics (e.g., historical
+     redlining, local zoning) likely confound both.
+
+  2. NHS is a specific infrastructure layer. Results reflect the National
+     Highway System — interstates and major US routes. Analysis with all
+     TIGER primary+secondary roads (tested as a robustness check) showed
+     the distance gradient shrinks substantially when including state and
+     county routes, because those roads are far more ubiquitous. The NHS
+     results are specific to major highway infrastructure.
+
+  3. Noise data vintage. The DOT noise shapefiles use 2010 census tract
+     GEOIDs, matched here to 2020 COI tracts. GEOID match rate is 100%,
+     but tract boundary changes between 2010 and 2020 mean noise values
+     for split/merged tracts may be imprecise at the margins.
+
+  4. Bus stop count as a transit proxy. Bus stop counts are a coarse measure
+     of transit access — they do not capture service frequency, operating
+     hours, or network connectivity. A tract with 10 stops running every
+     60 minutes offers less access than one with 5 stops running every 5.
+
+  5. R² is not the full story. Models explain 77–79% of variance in COI,
+     but COI itself is a composite index — high R² partly reflects shared
+     socioeconomic information in both the predictors (ACS controls) and
+     the outcome (COI includes poverty rate, employment, etc.).
+
+================================================================================
+OUTPUT FILES (C:\Users\bdevoe\Desktop\COI\output\)
+================================================================================
+transport_df.rds               — merged 82,315-tract dataset (NHS pipeline)
+infra_metrics.rds              — cached spatial metrics (NHS + NTM)
+transport_summary.csv          — quintile-level summary statistics
+transport_buffer_curve.csv     — buffer mile curves by COI quintile (0.5–5mi)
+transport_regression.csv       — M1/M2/M3 regression coefficients (all terms)
+transport_regression_ruca.csv  — RUCA-stratified regression coefficients
+transport_fig1_profile.png     — infrastructure profile bars (6 panels)
+transport_fig2_buffer_curve.png — buffer mile curve by COI quintile
+transport_fig3_coi_hwy.png     — COI vs NHS distance LOESS, faceted by RUCA
+transport_fig4_noveh_ruca.png  — % no-vehicle coefficient by RUCA (sign flip)
+transport_fig5_coi_hwy_all.png — COI vs NHS distance, all tracts, by quintile
+transport_fig6_noise.png       — COI vs mean noise dB, all tracts, by quintile
+================================================================================
