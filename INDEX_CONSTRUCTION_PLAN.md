@@ -14,19 +14,18 @@ Four weighting approaches will be constructed and compared; the best-performing 
 
 ---
 
-## Variable Set (5 inputs)
+## Variable Set
 
-| Variable | Direction |
-|---|---|
-| `log1p(dist_highway_km)` | Mixed — see Sign-Flip below |
-| `hwy_mi_1mi` | − (immediate burden) |
-| `hwy_mi_5mi` | + (regional access; universally positive across RUCA groups) |
-| `log1p(n_bus_stops)` | + (transit access) |
-| `mean_noise_db` | − (acoustic burden) |
+The final variable set is not yet locked in. Candidate inputs span four domains:
 
-`pct_no_vehicle` and `pct_exposed_60db` are excluded from the primary index (sign-flip and suppressor issues, respectively) but included in sensitivity analyses.
+- **Highway proximity** — distance to nearest highway, miles of highway within a buffer (e.g., 1 km, 5 km), or a distance-decay composite
+- **Highway burden** — immediate adjacency measures that capture exposure rather than access
+- **Transit access** — bus stop counts, stop density, or other GTFS-derived measures
+- **Noise exposure** — mean noise level or share of population above a threshold (dB)
 
-All variables are z-scored before weighting. Variables where higher = worse are negated so that high TOI scores consistently indicate better transportation opportunity.
+The distinction between proximity-as-access and proximity-as-burden is important and may be captured by different buffer radii or functional forms. Feature engineering decisions (log transforms, buffer sizes, decay functions) should be revisited before construction begins.
+
+All variables will be z-scored before weighting. Variables where higher = worse are negated so that high TOI scores consistently indicate better transportation opportunity.
 
 ---
 
