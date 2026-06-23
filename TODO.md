@@ -3,8 +3,8 @@
 ## Decisions
 
 - [ ] Resolve sign-flip problem: RUCA-stratified index vs. metropolitan-only scope
-- [ ] Finalize variable set and feature engineering choices (buffer sizes, log transforms, decay functions)
-- [ ] Finalize expert weights (Method 2) with Emilie
+- [ ] Finalize variable set and feature engineering choices (buffer sizes, log transforms, decay functions, explore any potential remaining variables)
+- [ ] Finalize expert weights (Method 2) with Emilie, we can use a.i. and multiple different weighting schemes
 - [ ] Confirm index name ("TOI" is working name)
 
 ## Analysis & Code
