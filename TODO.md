@@ -1,6 +1,6 @@
 # Transportation Opportunity Index — TODO
 
-## Decisions (must resolve before coding)
+## Decisions
 
 - [ ] Resolve sign-flip problem: RUCA-stratified index vs. metropolitan-only scope
 - [ ] Finalize variable set and feature engineering choices (buffer sizes, log transforms, decay functions)
