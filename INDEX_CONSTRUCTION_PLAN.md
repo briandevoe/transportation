@@ -47,10 +47,3 @@ Two variables reverse their relationship with COI depending on urbanicity:
 3. **Regression-based weighting** — weights proportional to standardized OLS coefficients from RUCA-stratified models
 4. **PCA weighting** — first principal component loadings from PCA on the normalized variable matrix
 
----
-
-## Open Questions
-
-- [ ] RUCA-stratified index vs. metropolitan-only scope — decide before coding
-- [ ] Finalize expert weights (Method 2) with Emilie
-- [ ] Confirm index name "TOI"
